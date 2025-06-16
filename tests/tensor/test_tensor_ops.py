@@ -4,22 +4,6 @@ from neura import Tensor
 
 
 class TestTensor(unittest.TestCase):
-    def test_init(self):
-        """Test Tensor initialization with default parameters."""
-        data = np.array([1, 2, 3], dtype=np.float32)
-        tensor = Tensor(data, requires_grad=True, dtype=np.float32)
-        self.assertTrue(np.array_equal(tensor.data, data))
-        self.assertTrue(tensor.requires_grad)
-        self.assertEqual(tensor.dtype, np.float32)
-        self.assertIsNone(tensor.grad)
-
-    def test_init_with_grad(self):
-        """Test Tensor initialization with a provided grad."""
-        data = np.array([1, 2, 3], dtype=np.float32)
-        grad = np.array([0, 0, 0], dtype=np.float32)
-        tensor = Tensor(data, requires_grad=True, dtype=np.float32, grad=grad)
-        self.assertTrue(np.array_equal(tensor.grad, grad))
-
     def test_add(self):
         """Test addition of two Tensors with mixed requires_grad."""
         data1 = np.array([1, 2, 3], dtype=np.float32)

@@ -10,7 +10,6 @@ class Tensor:
         data: Union[List[float], np.ndarray],
         requires_grad: bool = True,
         dtype: type = np.float32,
-        grad: Optional[np.ndarray] = None,
     ):
         if isinstance(data, list):
             self.data = np.array(data)
@@ -18,10 +17,10 @@ class Tensor:
             self.data = data
         self.requires_grad = requires_grad
         self.dtype = dtype
-        self.grad = grad
         self.ndim = self.data.ndim
         self.shape = self.data.shape
-        self.T = self.data.T
+        self.T = lambda: self.data.T
+        self.grad = np.zeros_like(self.data)
 
     @classmethod
     def from_strategy(cls, shape: tuple, strategy: InitStrategy, requires_grad: Optional[bool] = True, dtype: Optional[type] = np.float32) -> Tensor:

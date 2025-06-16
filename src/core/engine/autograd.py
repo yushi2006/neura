@@ -2,55 +2,68 @@ from __future__ import annotations
 import numpy as np
 
 class Node:
-    def __init__(self, data, _children=(), _op=''):
-        self.data = data
-        self.grad = 0
+    def __init__(self, tensor, _children=(), _op=''):
+        self.tensor = tensor
         self._backward = lambda: None
-        self._children = set(_children)
+        self._prev = set(_children)
         self._op = _op
     
     def __add__(self, other: Node) -> Node:
-        out = Node(self.data + other.data, (self, other), '+')
+        out = Node(self.tensor + other.tensor)
 
+        if out.tensor.requires_grad:
+            out._prev = (self, other)
+            out._op = '+'
 
-        def _backward():
-            self.grad += 1 * out.grad
-            other.grad += 1 * out.grad
+            def _backward():
+                self.tensor.grad += out.tensor.grad
+                other.tensor.grad += out.tensor.grad
 
-        out._backward = _backward
+            out._backward = _backward
 
         return out
     
     def __sub__(self, other: Node) -> Node:
-        out = Node(self.data - other.data, (self, other), '-')
+        out = Node(self.data - other.data)
 
+        if out.tensor.requires_grad:
+            out._prev = (self, other)
+            out._op = '-'
 
-        def _backward():
-            self.grad += 1 * out.grad
-            other.grad -= 1 * out.grad
+            def _backward():
+                self.tensor.grad += out.tensor.grad
+                other.tensor.grad -= out.tensor.grad
 
-        out._backward = _backward
+            out._backward = _backward
 
         return out
     
-    def __mul__(self, scalar: Node) -> Node:
-        out = Node(self.data * scalar, (self,), '*')
+    def __mul__(self, scalar: np.float16) -> Node:
+        out = Node(self.tensor * scalar)
 
-        def _backward():
-            self.grad += scalar * out.grad
+        if out.tensor.requires_grad:
+            out._prev = (self,)
+            out._op = '*'
 
-        out._backward = _backward
+            def _backward():
+                self.tensor.grad += scalar * out.tensor.grad
+
+            out._backward = _backward
 
         return out
     
     def __matmul__(self, other: Node) -> Node:
-        out = Node(self.data @ other.data, (self, other), '@')
+        out = Node(self.data @ other.data)
 
-        def _backward():
-            self.grad += other.data.T @ out.grad
-            other.grad += self.data @ out.grad.T
-        
-        out._backward = _backward
+        if out.tensor.requires_grad:
+            out._prev = (self, other)
+            out._op = '@'
+
+            def _backward():
+                self.tensor.grad += other.tensor.T @ out.grad
+                other.tensor.grad += self.tensor @ out.grad.T
+            
+            out._backward = _backward
 
         return out
     
@@ -59,7 +72,7 @@ class Node:
         visited = set()
         def build_graph(node):
             visited.add(node)
-            for child in node._children:
+            for child in node._prev:
                 build_graph(child)
             graph.append(node)
         build_graph(self)
@@ -68,6 +81,6 @@ class Node:
             node._backward()
     
     def zero_grad(self):
-        self.grad = 0
-        for child in self._children:
+        self.tensor.grad = np.zeros_like(self.data)
+        for child in self._prev:
             child.zero_grad()
