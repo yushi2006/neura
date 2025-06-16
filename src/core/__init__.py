@@ -1,5 +1,5 @@
-from .tensors.tensor import Tensor
-from .engine.autograd import Node
+from .tensors import Tensor
+from .engine import Node
 
 __all__ = [
     'Tensor',
