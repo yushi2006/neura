@@ -1,7 +1,7 @@
-from .tensors import Tensor
-from .engine import Node
+from .tensor import Tensor
+from .autograd import Autograd
 
 __all__ = [
     'Tensor',
-    'Node'
+    'Autograd'
 ]
