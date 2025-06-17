@@ -26,6 +26,15 @@ class Autograd:
         da = grad * scalar
 
         return da
+    
+    @staticmethod
+    def elementwisemul_backward(grad, ctx):
+        a, b = ctx["inputs"]
+
+        da = np.multiply(b.data, grad)
+        db = np.multiply(a.dat, grad)
+
+        return da, db
 
     @staticmethod
     def matmul_backward(grad, ctx):
