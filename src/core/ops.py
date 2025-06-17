@@ -42,6 +42,19 @@ class Ops:
             _grad_fn = Autograd.mul_backward
 
         return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+    
+    @staticmethod
+    def elementwisemul(a: Tensor, b: Tensor) -> Tensor:
+        data = np.multiply(a.data, b.data)
+        requires_grad = a.requires_grad or b.requires_grad
+
+        ctx, _grad_fn = None, None
+
+        if requires_grad:
+            ctx = {"inputs": (a, b), "shape": data.shape}
+            _grad_fn = Autograd.elementwisemul_backward
+        
+        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
     def matmul(a: Tensor, b: Tensor) -> Tensor:

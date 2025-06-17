@@ -57,10 +57,12 @@ class Tensor:
 
         return ops.sub(self, other)
 
-    def __mul__(self, scalar: float) -> Tensor:
+    def __mul__(self, other: Union[float, Tensor]) -> Tensor:
         from . import ops
-
-        return ops.mul(self, scalar=scalar)
+        if isinstance(other, Tensor):
+            return ops.elementwisemul(self, other=other)
+        else:
+            return ops.mul(self, other=other)
 
     def __matmul__(self, other: Tensor) -> Tensor:
         from . import ops
