@@ -3,7 +3,7 @@ import numpy as np
 
 # Adjust this import to match where your Tensor class is defined:
 # For example, if your tensor code is in tensor.py in the same folder:
-from neura import Tensor, Node
+from neura import Tensor
 
 class TestAutogradBackward(unittest.TestCase):
     def assertArrayAlmostEqual(self, a: np.ndarray, b: np.ndarray, tol: float = 1e-6):
@@ -19,7 +19,7 @@ class TestAutogradBackward(unittest.TestCase):
         # z = x + y
         x = Tensor([1.0, 2.0, 3.0], requires_grad=True)
         y = Tensor([4.0, 5.0, 6.0], requires_grad=True)
-        x, y = Node(x), Node(y)
+        #x, y = Node(x), Node(y)
         z = x + y
         # Before backward, grads should be zero (or None)
         # (depending on your design; we only check after backward)
@@ -33,7 +33,7 @@ class TestAutogradBackward(unittest.TestCase):
         # z = x - y
         x = Tensor([2.0, 3.0], requires_grad=True)
         y = Tensor([5.0, 7.0], requires_grad=True)
-        x, y = Node(x), Node(y)
+        #x, y = Node(x), Node(y)
         z = x - y
         z.backward()
         # dz/dx = 1, dz/dy = -1
@@ -46,7 +46,7 @@ class TestAutogradBackward(unittest.TestCase):
         # z = x * scalar
         scalar = 3.5
         x = Tensor([1.0, -2.0, 0.5], requires_grad=True)
-        x = Node(x)
+        #x = Node(x)
         z = x * scalar
         z.backward()
         # dz/dx = scalar
@@ -61,7 +61,7 @@ class TestAutogradBackward(unittest.TestCase):
                            [7.0, 8.0]], dtype=np.float32)
         x = Tensor(x_data, requires_grad=True)
         y = Tensor(y_data, requires_grad=True)
-        x, y = Node(x), Node(y)
+        #x, y = Node(x), Node(y)
         z = x @ y  # shape (2,2)
         # Directly call backward on matrix output:
         z.backward()
@@ -78,7 +78,7 @@ class TestAutogradBackward(unittest.TestCase):
         # Test combination: w = (x + y) * scalar
         x = Tensor([1.0, 2.0], requires_grad=True)
         y = Tensor([3.0, 4.0], requires_grad=True)
-        x, y = Node(x), Node(y)
+        #x, y = Node(x), Node(y)
         z = x + y       # dz/dx = 1, dz/dy = 1
         scalar = 2.0
         w = z * scalar  # dw/dz = scalar
@@ -92,7 +92,7 @@ class TestAutogradBackward(unittest.TestCase):
         # Check that zero_grad resets gradients for a small graph
         x = Tensor([1.0, 2.0], requires_grad=True)
         y = Tensor([3.0, 4.0], requires_grad=True)
-        x, y = Node(x), Node(y)
+        #x, y = Node(x), Node(y)
         z = x + y
         z.backward()
         # Ensure grads are non-zero
