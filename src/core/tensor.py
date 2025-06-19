@@ -96,9 +96,18 @@ class Tensor:
         self = ops.matmul(self, other)
 
         return self
+    
+    def conv2d(self, kernel: Tensor, **kwargs) -> Tensor:
+        from . import ops
 
-    def __getitem__(self, idx: Union[int, slice]) -> Tensor.dtype:
-        return self.data[idx]
+        output = ops.conv2d(self, kernel, **kwargs)
+
+        return output
+
+    def __getitem__(self, idx: Union[int, slice]) -> Tensor:
+        result = self.data[idx]
+
+        return Tensor(result, requires_grad=self.requires_grad, _ctx=self._ctx)
 
     def __len__(self) -> int:
         return self.data.size
