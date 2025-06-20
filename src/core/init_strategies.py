@@ -1,5 +1,6 @@
-import numpy as np
 from abc import ABC, abstractmethod
+
+import numpy as np
 
 
 class InitStrategy(ABC):
@@ -8,16 +9,16 @@ class InitStrategy(ABC):
         pass
 
 
-class ZeroInit(ABC):
+class ZeroInit(InitStrategy):
     def init(self, shape: tuple, dtype: type = np.float32) -> np.ndarray:
         return np.zeros(shape, dtype=dtype)
 
 
-class OneInit(ABC):
+class OneInit(InitStrategy):
     def init(self, shape: tuple, dtype: type = np.float32) -> np.ndarray:
         return np.ones(shape, dtype=dtype)
 
 
-class RandnInit(ABC):
+class RandnInit(InitStrategy):
     def init(self, shape: tuple, dtype: type = np.float32) -> np.ndarray:
         return np.random.random(*shape).astype(dtype)
