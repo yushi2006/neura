@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+from typing import List, Optional, Union
+
 import numpy as np
-from typing import Optional, Union, List
-from .init_strategies import InitStrategy, OneInit, ZeroInit, RandnInit
+
+from .init_strategies import InitStrategy, OneInit, RandnInit, ZeroInit
 
 
 class Tensor:
@@ -12,10 +15,10 @@ class Tensor:
         dtype: type = np.float32,
         _ctx: Optional[tuple] = None,
     ):
-        if isinstance(data, list):
+        if not isinstance(data, np.ndarray):
             self.data = np.array(data, dtype=dtype)
         else:
-            self.data = data.astype(dtype)
+            self.data = data
         self.requires_grad = requires_grad
         self.dtype = dtype
         self.ndim = self.data.ndim
@@ -29,8 +32,8 @@ class Tensor:
         cls,
         shape: tuple,
         strategy: InitStrategy,
-        requires_grad: Optional[bool] = True,
-        dtype: Optional[type] = np.float32,
+        requires_grad: bool = True,
+        dtype: type = np.float32,
     ) -> Tensor:
         data = strategy.init(shape, dtype)
         return cls(data, requires_grad, dtype=dtype)
@@ -48,59 +51,67 @@ class Tensor:
         return cls.from_strategy(shape, RandnInit(), **kwargs)
 
     def __add__(self, other: Tensor) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        return ops.add(self, other)
+        return Ops.add(self, other)
 
     def __sub__(self, other: Tensor) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        return ops.sub(self, other)
+        return Ops.sub(self, other)
 
-    def __mul__(self, other: Union[float, Tensor]) -> Tensor:
-        from . import ops
+    def __mul__(self, other: Union[np.float32, Tensor]) -> Tensor:
+        from .ops import Ops
+
         if isinstance(other, Tensor):
-            return ops.elementwisemul(self, other=other)
+            return Ops.elementwisemul(self, b=other)
         else:
-            return ops.mul(self, other=other)
+            return Ops.mul(self, scalar=other)
 
     def __matmul__(self, other: Tensor) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        return ops.matmul(self, other)
+        return Ops.matmul(self, other)
 
     def __iadd__(self, other: Tensor) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        self = ops.add(self, other)
+        self = Ops.add(self, other)
 
         return self
 
     def __isub__(self, other: Tensor) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        self = ops.sub(self, other)
+        self = Ops.sub(self, other)
 
         return self
 
     def __imul__(self, scalar: np.float32) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        self = ops.mul(self, scalar=scalar)
+        self = Ops.mul(self, scalar=scalar)
 
         return self
 
     def __imatmul__(self, other: Tensor) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        self = ops.matmul(self, other)
+        self = Ops.matmul(self, other)
 
         return self
-    
-    def conv2d(self, kernel: Tensor, **kwargs) -> Tensor:
-        from . import ops
 
-        output = ops.conv2d(self, kernel, **kwargs)
+    def conv2d(self, kernel: Tensor, **kwargs) -> Tensor:
+        from .ops import Ops
+
+        output = Ops.conv2d(self, kernel, **kwargs)
+
+        return output
+
+    def conv2dTranspose(self, kernel: Tensor, **kwargs) -> Tensor:
+        from .ops import Ops
+
+        output = Ops.conv2dTranspose(self, kernel, **kwargs)
 
         return output
 
@@ -148,8 +159,16 @@ class Tensor:
         input_grads = backward_fn(grad, arg_ctx)
 
         for t, g in zip(inputs, input_grads):
-            if t.requires_grad:
-                t.backward(g)
+            if isinstance(t, Tensor):
+                if t.requires_grad:
+                    t.backward(g)
+
+    def zero_grad(self):
+        self.grad = np.zeros_like(self.data)
+        if self._ctx is not None:
+            _, ctx = self._ctx
+            for prev in ctx["inputs"]:
+                prev.zero_grad()
 
     def __repr__(self) -> str:
         return f"{self.data}, dtype={self.dtype}"
