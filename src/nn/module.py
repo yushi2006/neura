@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
+
 import neura
+
 
 class Module(ABC):
     @abstractmethod
     def forward(self, x, **kwargs):
         raise NotImplementedError("Forward method is not implemented yet.")
-    
+
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
-    
+
     def parameters(self):
         params = []
         for _, value in vars(self).items():
