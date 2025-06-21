@@ -1,8 +1,10 @@
-import numpy as np
 import neura
-import neura.nn as nn
+import numpy as np
 
-class Linear(nn.Module):
+from .module import Module
+
+
+class Linear(Module):
     def __init__(self, in_dim: int, out_dim: int):
         super().__init__()
         self.W = neura.Tensor(np.random.randn(in_dim, out_dim))

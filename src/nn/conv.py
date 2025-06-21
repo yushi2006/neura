@@ -1,11 +1,12 @@
 from typing import Union
 
 import neura
-import neura.nn as nn
 import numpy as np
 
+from .module import Module
 
-class Conv2d(nn.Module):
+
+class Conv2d(Module):
     def __init__(
         self,
         in_channels: int,
@@ -55,7 +56,7 @@ class Conv2d(nn.Module):
         return out
 
 
-class Conv2dTranpose(nn.Module):
+class Conv2dTranspose(Module):
     def __init__(
         self,
         in_channels: int,
