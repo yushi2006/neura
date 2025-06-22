@@ -189,3 +189,12 @@ class Ops:
 
         # Return the output tensor
         return Tensor(output, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def reduce_grad_for_broadcast(grad: np.ndarray, target_shape: tuple) -> np.ndarray:
+        while grad.ndim > len(target_shape):
+            grad = grad.sum(axis=0)
+        for i, dim in enumerate(target_shape):
+            if dim == 1 and grad.shape[i] != 1:
+                grad = grad.sum(axis=i, keepdims=True)
+        return grad

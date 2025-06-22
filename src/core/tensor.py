@@ -138,6 +138,57 @@ class Tensor:
 
         return self
 
+    def broadcast_to(self, shape: tuple) -> "Tensor":
+        from .ops import Ops
+
+        try:
+            out_data = np.broadcast_to(self.data, shape)
+        except Exception as e:
+            raise ValueError(
+                f"Cannot broadcast Tensor of shape {self.shape} to target shape {shape}: {e}"
+            )
+
+        def backward_fn(upstream_grad: np.ndarray, ctx):
+            orig_shape = ctx["orig_shape"]
+            grad_self = Ops.reduce_grad_for_broadcast(upstream_grad, orig_shape)
+            return [grad_self]
+
+        ctx = {"inputs": (self,), "orig_shape": self.shape}
+        requires_grad = self.requires_grad
+        return Tensor(out_data, requires_grad=requires_grad, _ctx=(backward_fn, ctx))
+
+    def sum(self) -> "Tensor":
+        """
+        Sum all elements in the tensor, returning a scalar Tensor.
+        Backward: gradient w.r.t. this Tensor is an array of ones of the same shape.
+        """
+        import numpy as np
+
+        data_sum = self.data.sum()  # numpy scalar or 0-d numpy array
+
+        # Forward produces a scalar numpy value.
+        # Define backward:
+        def backward_fn(grad: np.ndarray, ctx):
+            # grad is scalar (numpy 0-d array or Python scalar) from upstream.
+            # We need to produce gradient for self.data: an array of shape self.shape,
+            # each element gets the upstream grad.
+            # Convert grad to numpy scalar if needed:
+            grad_value = grad
+            # Create an array of shape self.shape filled with grad_value
+            grad_self = np.ones(self.shape, dtype=self.data.dtype) * grad_value
+            return [grad_self]
+
+        # Context: store the input tensor's shape and reference for backward
+        ctx = {"inputs": (self,)}
+        requires_grad = self.requires_grad
+
+        # Wrap into a new Tensor. For a scalar, data_sum might be a numpy scalar or 0-d array.
+        # Normalize to a 0-d numpy array:
+        data_sum_arr = np.array(data_sum, dtype=self.dtype)
+        return Tensor(
+            data_sum_arr, requires_grad=requires_grad, _ctx=(backward_fn, ctx)
+        )
+
     def backward(self, grad=None):
         if not self.requires_grad:
             raise RuntimeError("Called backward on non-require-grad tensor.")
