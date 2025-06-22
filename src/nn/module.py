@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-import neura
+from neura import Tensor
 
 
 class Module(ABC):
@@ -14,8 +14,16 @@ class Module(ABC):
     def parameters(self):
         params = []
         for _, value in vars(self).items():
-            if isinstance(value, neura.Tensor):
+            if isinstance(value, Tensor):
                 params.append(value)
             elif isinstance(value, Module):
                 params.extend(value.parameters())
+            elif isinstance(value, (list, tuple)):
+                for item in value:
+                    if isinstance(item, Module):
+                        params.extend(item.parameters())
+            elif isinstance(value, dict):
+                for item in value.values():
+                    if isinstance(item, Module):
+                        params.extend(item.parameters())
         return params
