@@ -49,7 +49,7 @@ class Autograd:
     @staticmethod
     def conv2d_backward(grad_output, ctx):
         inputs = ctx["inputs"]
-        x, W = inputs[0], inputs[1]
+        x, kernel = inputs
 
         if isinstance(ctx["stride"], tuple):
             Sh, Sw = ctx["stride"]
@@ -61,16 +61,18 @@ class Autograd:
         else:
             Ph, Pw = (ctx["padding"], ctx["padding"])
 
-        N, C_in, H, W = x.shape
-        C_out, _, Kh, Kw = W.shape
+        N, C_in, H, W = x.data.shape
+        C_out, _, Kh, Kw = kernel.data.shape
         _, _, H_out, W_out = grad_output.shape
 
         if Ph > 0 or Pw > 0:
-            x_padded = np.pad(x, ((0, 0), (0, 0), (Ph, Ph), (Pw, Pw)), mode="constant")
+            x_padded = np.pad(
+                x.data, ((0, 0), (0, 0), (Ph, Ph), (Pw, Pw)), mode="constant"
+            )
         else:
-            x_padded = x
+            x_padded = x.data
         dx_padded = np.zeros_like(x_padded)
-        dW = np.zeros_like(W)
+        dW = np.zeros_like(kernel.data)
 
         for n in range(N):
             for cout in range(C_out):
@@ -86,12 +88,12 @@ class Autograd:
                             patch = x_padded[
                                 n, :, h_start : h_start + Kh, w_start : w_start + Kw
                             ]
-                            if W.requires_grad:
+                            if kernel.requires_grad:
                                 dW[cout] += patch * grad_val
                             if x.requires_grad:
                                 dx_padded[
                                     n, :, h_start : h_start + Kh, w_start : w_start + Kw
-                                ] += W[cout] * grad_val
+                                ] += kernel.data[cout] * grad_val
 
         if Ph > 0 or Pw > 0:
             dx = dx_padded[:, :, Ph : Ph + H, Pw : Pw + W]

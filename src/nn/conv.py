@@ -38,7 +38,9 @@ class Conv2d(Module):
         )
 
         self.b = (
-            neura.Tensor(np.zeros((self.out_channels, 1, 1))) if self.has_bias else None
+            neura.Tensor(np.zeros((self.out_channels, 1, 1)), requires_grad=True)
+            if self.has_bias
+            else None
         )
 
     def forward(self, x: neura.Tensor) -> neura.Tensor:
@@ -86,7 +88,9 @@ class Conv2dTranspose(Module):
         )
 
         self.b = (
-            neura.Tensor(np.zeros((self.out_channels, 1, 1))) if self.has_bias else None
+            neura.Tensor(np.zeros((self.out_channels, 1, 1)), requires_grad=True)
+            if self.has_bias
+            else None
         )
 
     def forward(self, x: neura.Tensor) -> neura.Tensor:
