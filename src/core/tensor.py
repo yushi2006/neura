@@ -115,6 +115,36 @@ class Tensor:
 
         return output
 
+    def relu(self) -> Tensor:
+        from .ops import Ops
+
+        output = Ops.relu(self)
+        return output
+
+    def abs(self) -> Tensor:
+        from .ops import Ops
+
+        output = Ops.abs(self)
+        return output
+
+    def log(self) -> Tensor:
+        from .ops import Ops
+
+        output = Ops.log(self)
+        return output
+
+    def exp(self) -> Tensor:
+        from .ops import Ops
+
+        output = Ops.exp(self)
+        return output
+
+    def sum(self) -> Tensor:
+        from .ops import Ops
+
+        output = Ops.sum(self)
+        return output
+
     def __getitem__(self, idx: Union[int, slice]) -> Tensor:
         result = self.data[idx]
 
@@ -157,62 +187,72 @@ class Tensor:
         requires_grad = self.requires_grad
         return Tensor(out_data, requires_grad=requires_grad, _ctx=(backward_fn, ctx))
 
-    def sum(self) -> "Tensor":
+    @staticmethod
+    def build_topo(tensor: "Tensor") -> list["Tensor"]:
         """
-        Sum all elements in the tensor, returning a scalar Tensor.
-        Backward: gradient w.r.t. this Tensor is an array of ones of the same shape.
+        Performs a topological sort of the graph ending at this tensor.
         """
-        import numpy as np
+        topo = []
+        visited = set()
 
-        data_sum = self.data.sum()  # numpy scalar or 0-d numpy array
+        def _visit(t):
+            if t not in visited:
+                visited.add(t)
+                if t._ctx:
+                    for parent in t._ctx[1]["inputs"]:
+                        if isinstance(parent, Tensor):
+                            _visit(parent)
+                topo.append(t)
 
-        # Forward produces a scalar numpy value.
-        # Define backward:
-        def backward_fn(grad: np.ndarray, ctx):
-            # grad is scalar (numpy 0-d array or Python scalar) from upstream.
-            # We need to produce gradient for self.data: an array of shape self.shape,
-            # each element gets the upstream grad.
-            # Convert grad to numpy scalar if needed:
-            grad_value = grad
-            # Create an array of shape self.shape filled with grad_value
-            grad_self = np.ones(self.shape, dtype=self.data.dtype) * grad_value
-            return [grad_self]
+        _visit(tensor)
+        return topo
 
-        # Context: store the input tensor's shape and reference for backward
-        ctx = {"inputs": (self,)}
-        requires_grad = self.requires_grad
-
-        # Wrap into a new Tensor. For a scalar, data_sum might be a numpy scalar or 0-d array.
-        # Normalize to a 0-d numpy array:
-        data_sum_arr = np.array(data_sum, dtype=self.dtype)
-        return Tensor(
-            data_sum_arr, requires_grad=requires_grad, _ctx=(backward_fn, ctx)
-        )
-
-    def backward(self, grad=None):
+    def backward(self, grad: Optional[np.ndarray] = None):
         if not self.requires_grad:
-            raise RuntimeError("Called backward on non-require-grad tensor.")
+            raise RuntimeError(
+                "Called backward on a tensor that does not require gradients."
+            )
 
+        # --- THE FIX IS HERE ---
         if grad is None:
-            if self.data.size == 1:
-                raise RuntimeError(
-                    "grad can be implicity created only for non-scalar outputs."
+            # Instead of raising an error for non-scalars, we create a
+            # gradient of ones. This is a common convention for testing.
+            grad = np.ones_like(self.data, dtype=self.dtype)
+
+        # The `grad` attribute accumulates gradients.
+        if self.grad is None:
+            self.grad = grad
+        else:
+            self.grad += grad
+
+        # --- The rest of your backward logic is correct ---
+        topo_sorted_graph = self.build_topo(self)
+
+        for t in reversed(topo_sorted_graph):
+            if t._ctx is None:
+                continue
+
+            backward_fn, arg_ctx = t._ctx
+            inputs = arg_ctx.get("inputs", [])  # Use .get for safety
+
+            upstream_grad = t.grad
+            if upstream_grad is None:
+                continue
+
+            input_grads = backward_fn(upstream_grad, arg_ctx)
+
+            # Ensure input_grads is a tuple, as autograd functions should return tuples
+            if not isinstance(input_grads, tuple):
+                raise TypeError(
+                    f"Backward function {backward_fn.__name__} must return a tuple of gradients."
                 )
-            grad = np.ones_like(self.data)
-        self.grad = grad if self.grad is None else self.grad + grad
 
-        if self._ctx is None:
-            return
-
-        backward_fn, arg_ctx = self._ctx
-        inputs = arg_ctx["inputs"]
-
-        input_grads = backward_fn(grad, arg_ctx)
-
-        for t, g in zip(inputs, input_grads):
-            if isinstance(t, Tensor):
-                if t.requires_grad:
-                    t.backward(g)
+            # This zip correctly pairs each input tensor with its calculated gradient.
+            for parent_tensor, grad_for_parent in zip(inputs, input_grads):
+                if isinstance(parent_tensor, Tensor) and parent_tensor.requires_grad:
+                    if parent_tensor.grad is None:
+                        parent_tensor.grad = np.zeros_like(parent_tensor.data)
+                    parent_tensor.grad += grad_for_parent
 
     def zero_grad(self):
         self.grad = np.zeros_like(self.data)

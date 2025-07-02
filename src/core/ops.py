@@ -1,6 +1,5 @@
 import numpy as np
 
-from .autograd import Autograd
 from .tensor import Tensor
 
 
@@ -13,6 +12,8 @@ class Ops:
         ctx, _grad_fn = None, None
 
         if requires_grad:
+            from .autograd import Autograd
+
             ctx = {"inputs": (a, b), "shape": data.shape}
             _grad_fn = Autograd.add_backward
 
@@ -26,6 +27,8 @@ class Ops:
         ctx, _grad_fn = None, None
 
         if requires_grad:
+            from .autograd import Autograd
+
             ctx = {"inputs": (a, b), "shape": data.shape}
             _grad_fn = Autograd.sub_backward
 
@@ -39,6 +42,8 @@ class Ops:
         ctx, _grad_fn = None, None
 
         if requires_grad:
+            from .autograd import Autograd
+
             ctx = {"inputs": (a, scalar), "shape": data.shape}
             _grad_fn = Autograd.mul_backward
 
@@ -52,6 +57,8 @@ class Ops:
         ctx, _grad_fn = None, None
 
         if requires_grad:
+            from .autograd import Autograd
+
             ctx = {"inputs": (a, b), "shape": data.shape}
             _grad_fn = Autograd.elementwisemul_backward
 
@@ -65,6 +72,8 @@ class Ops:
         ctx, _grad_fn = None, None
 
         if requires_grad:
+            from .autograd import Autograd
+
             ctx = {
                 "inputs": (a, b),
                 "shape": data.shape,
@@ -114,6 +123,9 @@ class Ops:
                     output[:, c_out, i, j] = np.sum(patch * filter, axis=(1, 2, 3))
 
         requires_grad = t.requires_grad or kernel.requires_grad
+
+        from .autograd import Autograd
+
         ctx = {
             "inputs": (t, kernel),
             "shape": output.shape,
@@ -179,6 +191,8 @@ class Ops:
 
         # Set up autograd context if gradients are needed
         if requires_grad:
+            from .autograd import Autograd
+
             ctx = {
                 "inputs": (t, kernel),
                 "shape": output.shape,
@@ -198,3 +212,85 @@ class Ops:
             if dim == 1 and grad.shape[i] != 1:
                 grad = grad.sum(axis=i, keepdims=True)
         return grad
+
+    @staticmethod
+    def relu(t: Tensor) -> Tensor:
+        output_data = np.maximum(t.data, 0)
+
+        mask = t.data > 0
+
+        requires_grad = t.requires_grad
+
+        ctx, _grad_fn = None, None
+
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "mask": mask}
+            _grad_fn = Autograd.relu_backward
+
+        return Tensor(output_data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def log(t: Tensor) -> Tensor:
+        data = np.log(t.data)
+
+        ctx, _grad_fn = None, None
+
+        if t.requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "input_data": t.data.copy()}
+            _grad_fn = Autograd.log_backward
+
+        return Tensor(data, t.requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def exp(t: Tensor) -> Tensor:
+        data = np.exp(t.data)
+
+        ctx, _grad_fn = None, None
+
+        if t.requires_grad:
+            from .autograd import Autograd
+
+            ctx = {
+                "inputs": (t,),
+                "input_data": data.copy(),
+            }
+            _grad_fn = Autograd.exp_backward
+        return Tensor(data, t.requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def sum(t: Tensor) -> Tensor:
+        data = t.data.sum()
+        requires_grad = t.requires_grad
+        ctx, _grad_fn = None, None
+
+        if t.requires_grad:
+            from .autograd import Autograd
+
+            # FIX: Save the input tensor to get its shape in the backward pass.
+            ctx = {"inputs": (t,)}
+            _grad_fn = Autograd.sum_backward
+
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def abs(t: Tensor) -> Tensor:
+        data = np.abs(t.data)
+
+        mask = t.data > 0
+
+        ctx, _grad_fn = None, None
+
+        if t.requires_grad:
+            from .autograd import Autograd
+
+            ctx = {
+                "inputs": (t,),
+                "mask": mask,
+            }
+            _grad_fn = Autograd.abs_backward
+
+        return Tensor(data, t.requires_grad, _ctx=(_grad_fn, ctx))
