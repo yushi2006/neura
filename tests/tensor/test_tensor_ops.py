@@ -344,6 +344,94 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(output.shape, (1, 1, 4, 4))
         self.assertTrue(output.requires_grad)
 
+    def test_relu(self):
+        """Test ReLU forward pass with positive, negative, and zero values."""
+        data = np.array([-2.0, -0.5, 0.0, 1.0, 3.0], dtype=np.float32)
+        t = Tensor(data, requires_grad=True)
+        out = t.relu()
+
+        expected = np.array([0.0, 0.0, 0.0, 1.0, 3.0], dtype=np.float32)
+        self.assertTrue(np.array_equal(out.data, expected))
+        self.assertTrue(out.requires_grad)
+
+    def test_log(self):
+        """Test natural log forward pass."""
+        data = np.array([1.0, np.e, np.e**2], dtype=np.float32)
+        t = Tensor(data, requires_grad=True)
+        out = t.log()
+
+        expected = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+        self.assertTrue(np.allclose(out.data, expected, atol=1e-6))
+        self.assertTrue(out.requires_grad)
+
+    def test_exp(self):
+        """Test exponential forward pass."""
+        data = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+        t = Tensor(data, requires_grad=True)
+        out = t.exp()
+
+        expected = np.array([1.0, np.e, np.e**2], dtype=np.float32)
+        self.assertTrue(np.allclose(out.data, expected, atol=1e-6))
+        self.assertTrue(out.requires_grad)
+
+    def test_abs(self):
+        """Test absolute value forward pass."""
+        data = np.array([-3.0, 0.0, 4.0], dtype=np.float32)
+        t = Tensor(data, requires_grad=True)
+        out = t.abs()
+
+        expected = np.array([3.0, 0.0, 4.0], dtype=np.float32)
+        self.assertTrue(np.array_equal(out.data, expected))
+        self.assertTrue(out.requires_grad)
+
+    def test_sum(self):
+        """Test tensor summation."""
+        data = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        t = Tensor(data, requires_grad=True)
+        out = t.sum()
+
+        self.assertEqual(out.data, 10.0)
+        self.assertTrue(out.requires_grad)
+
+    def test_no_grad_path(self):
+        """Test operations when requires_grad=False."""
+        data = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        t = Tensor(data, requires_grad=False)
+
+        # All operations should produce non-requires-grad tensors
+        self.assertFalse(t.relu().requires_grad)
+        self.assertFalse(t.log().requires_grad)
+        self.assertFalse(t.exp().requires_grad)
+        self.assertFalse(t.abs().requires_grad)
+        self.assertFalse(t.sum().requires_grad)
+
+        # Should not accumulate gradients
+        out = t.exp().sum()
+        with self.assertRaises(RuntimeError):
+            out.backward()
+
+    def test_log_stability(self):
+        data = np.array([0.0, 1e-8, 1e-16], dtype=np.float32)
+        t = Tensor(data, requires_grad=True)
+        out = t.log().sum().backward()
+
+        # The expected gradient is now 1 / (x + 1e-8)
+        expected_grad = 1 / (data + 1e-8)
+        self.assertTrue(np.allclose(t.grad, expected_grad, atol=1e-6))
+
+    def test_exp_overflow(self):
+        """Test exp with large values doesn't break gradient."""
+        data = np.array([100.0], dtype=np.float32)
+        t = Tensor(data, requires_grad=True)
+        out = t.exp()
+
+        # Should get inf in forward pass but still valid gradient
+        self.assertTrue(np.isinf(out.data[0]))
+
+        # Backward should propagate inf * grad
+        out.backward()
+        self.assertTrue(np.isinf(t.grad[0]))
+
 
 if __name__ == "__main__":
     unittest.main()
