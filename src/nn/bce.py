@@ -1,5 +1,4 @@
-import neura
-
+from ..core import Tensor
 from .module import Module
 
 
@@ -9,7 +8,7 @@ class BCEWithLogitLoss(Module):
         if reduction not in ["none", "mean", "sum"]:
             raise ValueError(f"Invalid reduction mode: {reduction}")
 
-    def forward(self, x: neura.Tensor, target: neura.Tensor) -> neura.Tensor:
+    def forward(self, x: Tensor, target: Tensor) -> Tensor:
         max_val = (-x).relu()
         loss = x - x * target + max_val + ((-x).abs() + max_val).exp().log()
 

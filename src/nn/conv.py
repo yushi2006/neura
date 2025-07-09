@@ -1,8 +1,8 @@
 from typing import Union
 
-import neura
 import numpy as np
 
+from ..core import Tensor
 from .module import Module
 
 
@@ -32,18 +32,18 @@ class Conv2d(Module):
             self.kernel_size,
         )
         scale = np.sqrt(2.0 / (self.in_channels * self.kernel_size * self.kernel_size))
-        self.W = neura.Tensor(
+        self.W = Tensor(
             np.random.randn(*weight_shape).astype(np.float32) * scale,
             requires_grad=True,
         )
 
         self.b = (
-            neura.Tensor(np.zeros((self.out_channels, 1, 1)), requires_grad=True)
+            Tensor(np.zeros((self.out_channels, 1, 1)), requires_grad=True)
             if self.has_bias
             else None
         )
 
-    def forward(self, x: neura.Tensor) -> neura.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         _, C_in, _, _ = x.shape
 
         if C_in != self.in_channels:
@@ -82,18 +82,18 @@ class Conv2dTranspose(Module):
             self.kernel_size,
         )
         scale = np.sqrt(2.0 / (self.in_channels * self.kernel_size * self.kernel_size))
-        self.W = neura.Tensor(
+        self.W = Tensor(
             np.random.randn(*weight_shape).astype(np.float32) * scale,
             requires_grad=True,
         )
 
         self.b = (
-            neura.Tensor(np.zeros((self.out_channels, 1, 1)), requires_grad=True)
+            Tensor(np.zeros((self.out_channels, 1, 1)), requires_grad=True)
             if self.has_bias
             else None
         )
 
-    def forward(self, x: neura.Tensor) -> neura.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         _, C_in, _, _ = x.shape
 
         if C_in != self.in_channels:

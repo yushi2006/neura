@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from neura import Tensor
+from ..core.tensor import Tensor
 
 
 class Module(ABC):

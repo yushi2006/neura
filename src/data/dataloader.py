@@ -9,24 +9,27 @@ class DataLoader:
         self.batch_size = batch_size
         self.shuffle = shuffle
 
+        if not isinstance(dataset, np.ndarray):
+            print("Warning: For best performance, dataset should be a NumPy array.")
+
     def __len__(self):
         return (len(self.dataset) + self.batch_size - 1) // self.batch_size
 
     def __iter__(self):
         indices = np.arange(len(self.dataset))
-
         if self.shuffle:
             np.random.shuffle(indices)
 
         for i in range(0, len(indices), self.batch_size):
             batch_indices = indices[i : i + self.batch_size]
-            batch_data_list = [self.dataset[j][:-1] for j in batch_indices]
-            batch_labels_list = [self.dataset[j][-1] for j in batch_indices]
 
-        batch_data_np = np.array(batch_data_list)
-        batch_labels_np = np.array(batch_labels_list)
+            batch_data = self.dataset[batch_indices, :-1]
+            batch_labels = self.dataset[batch_indices, -1]
 
-        data_tensor = Tensor(batch_data_np, requires_grad=False)
-        labels_tensor = Tensor(batch_labels_np, requires_grad=False)
+            if batch_labels.ndim == 1:
+                batch_labels = batch_labels.reshape(-1, 1)
 
-        yield data_tensor, labels_tensor
+            yield (
+                Tensor(batch_data, requires_grad=False),
+                Tensor(batch_labels, requires_grad=False),
+            )
