@@ -4,136 +4,229 @@ from .tensor import Tensor
 
 
 class Ops:
+    # --- Binary Ops ---
     @staticmethod
     def add(a: Tensor, b: Tensor) -> Tensor:
         data = a.data + b.data
         requires_grad = a.requires_grad or b.requires_grad
-
-        ctx, _grad_fn = None, None
-
+        _grad_fn, ctx = None, None
         if requires_grad:
             from .autograd import Autograd
 
-            ctx = {"inputs": (a, b), "shape": data.shape}
+            ctx = {"inputs": (a, b)}
             _grad_fn = Autograd.add_backward
-
-        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
     def sub(a: Tensor, b: Tensor) -> Tensor:
         data = a.data - b.data
         requires_grad = a.requires_grad or b.requires_grad
-
-        ctx, _grad_fn = None, None
-
+        _grad_fn, ctx = None, None
         if requires_grad:
             from .autograd import Autograd
 
-            ctx = {"inputs": (a, b), "shape": data.shape}
+            ctx = {"inputs": (a, b)}
             _grad_fn = Autograd.sub_backward
-
-        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
-    def mul(a: Tensor, scalar: np.float32) -> Tensor:
+    def mul(a: Tensor, scalar: float) -> Tensor:
         data = a.data * scalar
         requires_grad = a.requires_grad
-
-        ctx, _grad_fn = None, None
-
+        _grad_fn, ctx = None, None
         if requires_grad:
             from .autograd import Autograd
 
-            ctx = {"inputs": (a, scalar), "shape": data.shape}
+            ctx = {"inputs": (a,), "scalar": scalar}
             _grad_fn = Autograd.mul_backward
-
-        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
     def elementwisemul(a: Tensor, b: Tensor) -> Tensor:
-        data = np.multiply(a.data, b.data)
+        data = a.data * b.data
         requires_grad = a.requires_grad or b.requires_grad
-
-        ctx, _grad_fn = None, None
-
+        _grad_fn, ctx = None, None
         if requires_grad:
             from .autograd import Autograd
 
-            ctx = {"inputs": (a, b), "shape": data.shape}
+            ctx = {"inputs": (a, b)}
             _grad_fn = Autograd.elementwisemul_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
-        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+    @staticmethod
+    def pow(base: Tensor, power: float) -> Tensor:
+        data = base.data**power
+        requires_grad = base.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (base,), "power": power}
+            _grad_fn = Autograd.pow_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
     def matmul(a: Tensor, b: Tensor) -> Tensor:
         data = a.data @ b.data
         requires_grad = a.requires_grad or b.requires_grad
-
-        ctx, _grad_fn = None, None
-
+        _grad_fn, ctx = None, None
         if requires_grad:
             from .autograd import Autograd
 
-            ctx = {
-                "inputs": (a, b),
-                "shape": data.shape,
-            }
+            ctx = {"inputs": (a, b)}
             _grad_fn = Autograd.matmul_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
-        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+    # --- Unary Ops ---
+    @staticmethod
+    def neg(t: Tensor):
+        data = -t.data
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,)}
+            _grad_fn = Autograd.neg_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
+    def relu(t: Tensor) -> Tensor:
+        data = np.maximum(t.data, 0)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,)}
+            _grad_fn = Autograd.relu_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    # --- Reshaping/Indexing Ops (now graph-aware) ---
+    @staticmethod
+    def transpose(t: Tensor, axes=None) -> Tensor:
+        data = np.transpose(t.data, axes)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "axes": axes}
+            _grad_fn = Autograd.transpose_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def view(t: Tensor, shape: tuple) -> Tensor:
+        data = t.data.reshape(shape)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "original_shape": t.shape}
+            _grad_fn = Autograd.view_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def squeeze(t: Tensor, dim: int = None) -> Tensor:
+        data = np.squeeze(t.data, axis=dim)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "original_shape": t.shape}
+            _grad_fn = Autograd.squeeze_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def unsqueeze(t: Tensor, dim: int) -> Tensor:
+        data = np.expand_dims(t.data, axis=dim)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "original_shape": t.shape}
+            _grad_fn = Autograd.unsqueeze_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def getitem(t: Tensor, idx) -> Tensor:
+        data = t.data[idx]
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "original_shape": t.shape, "idx": idx}
+            _grad_fn = Autograd.getitem_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    # --- RESTORED: broadcast_to operation ---
+    @staticmethod
+    def broadcast_to(t: Tensor, shape: tuple) -> Tensor:
+        data = np.broadcast_to(t.data, shape)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "original_shape": t.shape}
+            _grad_fn = Autograd.broadcast_to_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    # --- Reduction Op ---
+    @staticmethod
+    def sum(t: Tensor, axis=None, keepdims=False) -> Tensor:
+        data = t.data.sum(axis=axis, keepdims=keepdims)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
+
+            ctx = {"inputs": (t,), "original_shape": t.shape}
+            _grad_fn = Autograd.sum_backward
+        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
+
+    # --- Convolutional Ops ---
+    @staticmethod
     def conv2d(
-        t: Tensor,
-        kernel: Tensor,
-        padding: tuple = (0, 0),
-        stride: tuple = (1, 1),
+        t: Tensor, kernel: Tensor, padding: tuple = (0, 0), stride: tuple = (1, 1)
     ) -> Tensor:
         N, C_in, H, W = t.shape
         C_out, C_in_k, Kh, Kw = kernel.shape
         assert C_in == C_in_k, "Input channels must match kernel channels"
 
-        if isinstance(stride, tuple):
-            Sh, Sw = stride
-        else:
-            Sh, Sw = (stride, stride)
-        if isinstance(padding, tuple):
-            Ph, Pw = padding
-        else:
-            Ph, Pw = (padding, padding)
+        Sh, Sw = (stride, stride) if isinstance(stride, int) else stride
+        Ph, Pw = (padding, padding) if isinstance(padding, int) else padding
 
         H_out = (H + 2 * Ph - Kh) // Sh + 1
         W_out = (W + 2 * Pw - Kw) // Sw + 1
         assert H_out > 0 and W_out > 0, "Invalid output dimensions"
 
-        if Ph > 0 or Pw > 0:
-            t_padded = np.pad(
-                t.data, ((0, 0), (0, 0), (Ph, Ph), (Pw, Pw)), mode="constant"
-            )
-        else:
-            t_padded = t.data
-
-        output = np.zeros((N, C_out, H_out, W_out))
+        t_padded = (
+            np.pad(t.data, ((0, 0), (0, 0), (Ph, Ph), (Pw, Pw)), mode="constant")
+            if Ph > 0 or Pw > 0
+            else t.data
+        )
+        output = np.zeros((N, C_out, H_out, W_out), dtype=t.dtype)
 
         for i in range(H_out):
             for j in range(W_out):
                 patch = t_padded[:, :, i * Sh : i * Sh + Kh, j * Sw : j * Sw + Kw]
                 for c_out in range(C_out):
-                    filter = kernel.data[c_out]
-                    output[:, c_out, i, j] = np.sum(patch * filter, axis=(1, 2, 3))
+                    output[:, c_out, i, j] = np.sum(
+                        patch * kernel.data[c_out], axis=(1, 2, 3)
+                    )
 
         requires_grad = t.requires_grad or kernel.requires_grad
+        _grad_fn, ctx = None, None
+        if requires_grad:
+            from .autograd import Autograd
 
-        from .autograd import Autograd
-
-        ctx = {
-            "inputs": (t, kernel),
-            "shape": output.shape,
-            "padding": padding,
-            "stride": stride,
-        }
-        _grad_fn = Autograd.conv2d_backward
-
+            ctx = {"inputs": (t, kernel), "padding": padding, "stride": stride}
+            _grad_fn = Autograd.conv2d_backward
         return Tensor(output, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
@@ -143,154 +236,86 @@ class Ops:
         N, C_in, H, W = t.shape
         C_out, _, Kh, Kw = kernel.shape
 
-        # Handle stride and padding as tuples or scalars
-        if isinstance(stride, tuple):
-            Sh, Sw = stride
-        else:
-            Sh, Sw = (stride, stride)
-        if isinstance(padding, tuple):
-            Ph, Pw = padding
-        else:
-            Ph, Pw = (padding, padding)
+        Sh, Sw = (stride, stride) if isinstance(stride, int) else stride
+        Ph, Pw = (padding, padding) if isinstance(padding, int) else padding
 
-        # Calculate output dimensions
         Oh = (H - 1) * Sh + Kh - 2 * Ph
         Ow = (W - 1) * Sw + Kw - 2 * Pw
-
-        # Validate output dimensions
         if Oh <= 0 or Ow <= 0:
-            raise ValueError(
-                f"Invalid output dimensions: Oh={Oh}, Ow={Ow}. Adjust input size, stride, padding, or kernel size."
-            )
+            raise ValueError(f"Invalid output dimensions: Oh={Oh}, Ow={Ow}.")
 
-        # Initialize output tensor
-        output = np.zeros((N, C_out, Oh, Ow))
+        output = np.zeros((N, C_out, Oh, Ow), dtype=t.dtype)
 
-        # Perform transposed convolution
         for i in range(H):
             for j in range(W):
                 for c_out in range(C_out):
                     for c_in in range(C_in):
                         input_val = t.data[:, c_in, i, j]
                         kernel_patch = kernel.data[c_out, c_in, :, :]
-
                         for kh in range(Kh):
                             for kw in range(Kw):
-                                out_i = i * Sh + kh - Ph
-                                out_j = (
-                                    j * Sw + kw - Pw
-                                )  # Corrected from i * Sw to j * Sw
+                                out_i, out_j = i * Sh + kh - Ph, j * Sw + kw - Pw
                                 if 0 <= out_i < Oh and 0 <= out_j < Ow:
                                     output[:, c_out, out_i, out_j] += (
                                         input_val * kernel_patch[kh, kw]
                                     )
 
-        # Determine if gradients are required
         requires_grad = t.requires_grad or kernel.requires_grad
         _grad_fn, ctx = None, None
-
-        # Set up autograd context if gradients are needed
         if requires_grad:
             from .autograd import Autograd
 
-            ctx = {
-                "inputs": (t, kernel),
-                "shape": output.shape,
-                "padding": padding,
-                "stride": stride,
-            }
+            ctx = {"inputs": (t, kernel), "padding": padding, "stride": stride}
             _grad_fn = Autograd.conv2dTranspose_backward
-
-        # Return the output tensor
         return Tensor(output, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
-
-    @staticmethod
-    def reduce_grad_for_broadcast(grad: np.ndarray, target_shape: tuple) -> np.ndarray:
-        while grad.ndim > len(target_shape):
-            grad = grad.sum(axis=0)
-        for i, dim in enumerate(target_shape):
-            if dim == 1 and grad.shape[i] != 1:
-                grad = grad.sum(axis=i, keepdims=True)
-        return grad
-
-    @staticmethod
-    def relu(t: Tensor) -> Tensor:
-        output_data = np.maximum(t.data, 0)
-
-        mask = t.data > 0
-
-        requires_grad = t.requires_grad
-
-        ctx, _grad_fn = None, None
-
-        if requires_grad:
-            from .autograd import Autograd
-
-            ctx = {"inputs": (t,), "mask": mask}
-            _grad_fn = Autograd.relu_backward
-
-        return Tensor(output_data, requires_grad, _ctx=(_grad_fn, ctx))
-
-    @staticmethod
-    def log(t: Tensor) -> Tensor:
-        data = np.log(t.data)
-
-        ctx, _grad_fn = None, None
-
-        if t.requires_grad:
-            from .autograd import Autograd
-
-            ctx = {"inputs": (t,), "input_data": t.data.copy()}
-            _grad_fn = Autograd.log_backward
-
-        return Tensor(data, t.requires_grad, _ctx=(_grad_fn, ctx))
-
-    @staticmethod
-    def exp(t: Tensor) -> Tensor:
-        data = np.exp(t.data)
-
-        ctx, _grad_fn = None, None
-
-        if t.requires_grad:
-            from .autograd import Autograd
-
-            ctx = {
-                "inputs": (t,),
-                "input_data": data.copy(),
-            }
-            _grad_fn = Autograd.exp_backward
-        return Tensor(data, t.requires_grad, _ctx=(_grad_fn, ctx))
-
-    @staticmethod
-    def sum(t: Tensor) -> Tensor:
-        data = t.data.sum()
-        requires_grad = t.requires_grad
-        ctx, _grad_fn = None, None
-
-        if t.requires_grad:
-            from .autograd import Autograd
-
-            # FIX: Save the input tensor to get its shape in the backward pass.
-            ctx = {"inputs": (t,)}
-            _grad_fn = Autograd.sum_backward
-
-        return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
     @staticmethod
     def abs(t: Tensor) -> Tensor:
         data = np.abs(t.data)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
 
-        mask = t.data > 0
-
-        ctx, _grad_fn = None, None
-
-        if t.requires_grad:
+        if requires_grad:
             from .autograd import Autograd
 
-            ctx = {
-                "inputs": (t,),
-                "mask": mask,
-            }
+            # We only need the input tensor for the backward pass to compute its sign.
+            ctx = {"inputs": (t,)}
             _grad_fn = Autograd.abs_backward
 
-        return Tensor(data, t.requires_grad, _ctx=(_grad_fn, ctx))
+        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def exp(t: Tensor) -> Tensor:
+        """
+        Forward pass for the element-wise exponential operation.
+        """
+        data = np.exp(t.data)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+
+        if requires_grad:
+            from .autograd import Autograd
+
+            # The output of the forward pass is needed for the backward pass.
+            ctx = {"inputs": (t,), "output_data": data}
+            _grad_fn = Autograd.exp_backward
+
+        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
+
+    @staticmethod
+    def log(t: Tensor) -> Tensor:
+        """
+        Forward pass for the element-wise natural logarithm operation.
+        """
+        data = np.log(t.data)
+        requires_grad = t.requires_grad
+        _grad_fn, ctx = None, None
+
+        if requires_grad:
+            from .autograd import Autograd
+
+            # The original input tensor is needed for the backward pass (1/x).
+            ctx = {"inputs": (t,)}
+            _grad_fn = Autograd.log_backward
+
+        return Tensor(data, requires_grad=requires_grad, _ctx=(_grad_fn, ctx))
