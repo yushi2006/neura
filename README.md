@@ -120,6 +120,7 @@ Neura is more than a framework — it’s a tool for researchers who want to go 
 - Creating custom architectures without 20 wrappers and 500MB of dependencies
 - Creating Custom CUDA kernels with python
 
+
 If PyTorch is a spaceship, Neura is the engine on the table — raw, flexible, and yours to optimize.
 
 > Clone. Hack. Break. Rebuild. That’s the point.
