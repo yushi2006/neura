@@ -15,6 +15,9 @@ def _to_tuple(value: Union[int, tuple], n: int) -> tuple:
     raise ValueError(f"Value must be an int or a tuple of length {n}, but got {value}")
 
 
+from ..core import init  # Import our new init module
+
+
 class Conv2d(Module):
     def __init__(
         self,
@@ -23,56 +26,43 @@ class Conv2d(Module):
         kernel_size: Union[int, tuple],
         stride: Union[int, tuple] = 1,
         padding: Union[int, tuple] = 0,
-        has_bias: bool = True,  # Often set to False if using BatchNorm
+        has_bias: bool = True,
     ):
         super().__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
-
-        # Normalize inputs to tuples for consistency (e.g., 3 -> (3, 3))
         self.kernel_size = _to_tuple(kernel_size, 2)
         self.stride = _to_tuple(stride, 2)
         self.padding = _to_tuple(padding, 2)
-
         self.has_bias = has_bias
 
-        # Use the tuple-based kernel_size for calculations
         weight_shape = (
-            self.out_channels,
-            self.in_channels,
-            self.kernel_size[0],  # Kernel Height
-            self.kernel_size[1],  # Kernel Width
+            out_channels,
+            in_channels,
+            self.kernel_size[0],
+            self.kernel_size[1],
         )
 
-        # fan_in is the number of input units in the receptive field
-        fan_in = self.in_channels * self.kernel_size[0] * self.kernel_size[1]
-        scale = np.sqrt(2.0 / fan_in)
+        self.W = Tensor(np.empty(weight_shape), requires_grad=True)
+        if self.has_bias:
+            self.b = Tensor(np.empty((out_channels,)), requires_grad=True)
+        else:
+            self.b = None
 
-        self.W = Tensor(
-            np.random.randn(*weight_shape).astype(np.float32) * scale,
-            requires_grad=True,
-        )
+        self.reset_parameters()
 
-        self.b = (
-            Tensor(np.zeros((self.out_channels, 1, 1)), requires_grad=True)
-            if self.has_bias
-            else None
-        )
+    def reset_parameters(self):
+        init.kaiming_uniform_(self.W, a=np.sqrt(5))
+        if self.b is not None:
+            init.zeros_(self.b)
 
     def forward(self, x: Tensor) -> Tensor:
-        _, C_in, _, _ = x.shape
-
-        if C_in != self.in_channels:
-            raise ValueError(
-                f"Input tensor channels {C_in} ≠ expected {self.in_channels}"
-            )
-
-        # The delegated conv2d method must be able to handle tuple arguments
         out = x.conv2d(self.W, padding=self.padding, stride=self.stride)
 
         if self.b is not None:
-            out = out + self.b
+            bias_reshaped = self.b.view(1, self.out_channels, 1, 1)
+            out = out + bias_reshaped
         return out
 
 

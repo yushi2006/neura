@@ -25,16 +25,14 @@ class Tensor:
         self.ndim = self.data.ndim
         self.shape = self.data.shape
         self.grad = np.zeros_like(self.data) if requires_grad else None
-        self._ctx = _ctx  # Stores (backward_fn, context_dict)
+        self._ctx = _ctx
 
-    # --- Properties ---
     @property
     def T(self) -> Tensor:
         from .ops import Ops
 
         return Ops.transpose(self)
 
-    # --- Factory Methods ---
     @classmethod
     def from_strategy(
         cls,
@@ -58,7 +56,6 @@ class Tensor:
     def randn(cls, *shape: int, **kwargs) -> Tensor:
         return cls.from_strategy(shape, RandnInit(), **kwargs)
 
-    # --- Dunder Methods for Ops (delegating to ops.py) ---
     def __add__(self, other: Union[float, int, Tensor]) -> Tensor:
         from .ops import Ops
 
@@ -73,6 +70,8 @@ class Tensor:
         return Ops.sub(self, other if isinstance(other, Tensor) else Tensor(other))
 
     def __rsub__(self, other):
+        from .ops import Ops
+
         return Ops.neg(self.__sub__(other))
 
     def __mul__(self, other: Union[float, int, Tensor]) -> Tensor:
@@ -107,7 +106,21 @@ class Tensor:
 
         return Ops.pow(self, power)
 
-    # --- Core Operations (now correctly create new Tensors) ---
+    def __rshift__(self, other):
+        from ..nn.module import Module
+
+        if isinstance(other, Module):
+            return other(self)
+
+        elif callable(other):
+            return other(self)
+
+        else:
+            raise TypeError(
+                f"Unsupported operand type for >>: 'Tensor' and '{type(other).__name__}'. "
+                f"Right-hand side must be an nn.Module or a callable."
+            )
+
     def view(self, *shape: int) -> Tensor:
         from .ops import Ops
 
@@ -138,13 +151,11 @@ class Tensor:
 
         return Ops.conv2dTranspose(self, kernel, **kwargs)
 
-    # --- RESTORED: broadcast_to method ---
     def broadcast_to(self, shape: tuple) -> "Tensor":
         from .ops import Ops
 
         return Ops.broadcast_to(self, shape)
 
-    # --- Other Operations ---
     def sum(self, axis=None, keepdims=False) -> Tensor:
         from .ops import Ops
 
@@ -170,7 +181,6 @@ class Tensor:
 
         return Ops.exp(self)
 
-    # --- Autograd Engine ---
     @staticmethod
     def build_topo(tensor: "Tensor") -> list["Tensor"]:
         topo, visited = [], set()

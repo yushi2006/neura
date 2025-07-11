@@ -4,7 +4,6 @@ from .tensor import Tensor
 
 
 class Ops:
-    # --- Binary Ops ---
     @staticmethod
     def add(a: Tensor, b: Tensor) -> Tensor:
         data = a.data + b.data
@@ -77,7 +76,6 @@ class Ops:
             _grad_fn = Autograd.matmul_backward
         return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
-    # --- Unary Ops ---
     @staticmethod
     def neg(t: Tensor):
         data = -t.data
@@ -102,7 +100,6 @@ class Ops:
             _grad_fn = Autograd.relu_backward
         return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
-    # --- Reshaping/Indexing Ops (now graph-aware) ---
     @staticmethod
     def transpose(t: Tensor, axes=None) -> Tensor:
         data = np.transpose(t.data, axes)
@@ -163,7 +160,6 @@ class Ops:
             _grad_fn = Autograd.getitem_backward
         return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
-    # --- RESTORED: broadcast_to operation ---
     @staticmethod
     def broadcast_to(t: Tensor, shape: tuple) -> Tensor:
         data = np.broadcast_to(t.data, shape)
@@ -176,7 +172,6 @@ class Ops:
             _grad_fn = Autograd.broadcast_to_backward
         return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
-    # --- Reduction Op ---
     @staticmethod
     def sum(t: Tensor, axis=None, keepdims=False) -> Tensor:
         data = t.data.sum(axis=axis, keepdims=keepdims)
@@ -189,7 +184,6 @@ class Ops:
             _grad_fn = Autograd.sum_backward
         return Tensor(data, requires_grad, _ctx=(_grad_fn, ctx))
 
-    # --- Convolutional Ops ---
     @staticmethod
     def conv2d(
         t: Tensor, kernel: Tensor, padding: tuple = (0, 0), stride: tuple = (1, 1)
@@ -278,7 +272,6 @@ class Ops:
         if requires_grad:
             from .autograd import Autograd
 
-            # We only need the input tensor for the backward pass to compute its sign.
             ctx = {"inputs": (t,)}
             _grad_fn = Autograd.abs_backward
 
@@ -286,9 +279,6 @@ class Ops:
 
     @staticmethod
     def exp(t: Tensor) -> Tensor:
-        """
-        Forward pass for the element-wise exponential operation.
-        """
         data = np.exp(t.data)
         requires_grad = t.requires_grad
         _grad_fn, ctx = None, None
@@ -296,7 +286,6 @@ class Ops:
         if requires_grad:
             from .autograd import Autograd
 
-            # The output of the forward pass is needed for the backward pass.
             ctx = {"inputs": (t,), "output_data": data}
             _grad_fn = Autograd.exp_backward
 
@@ -304,9 +293,6 @@ class Ops:
 
     @staticmethod
     def log(t: Tensor) -> Tensor:
-        """
-        Forward pass for the element-wise natural logarithm operation.
-        """
         data = np.log(t.data)
         requires_grad = t.requires_grad
         _grad_fn, ctx = None, None
@@ -314,7 +300,6 @@ class Ops:
         if requires_grad:
             from .autograd import Autograd
 
-            # The original input tensor is needed for the backward pass (1/x).
             ctx = {"inputs": (t,)}
             _grad_fn = Autograd.log_backward
 

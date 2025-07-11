@@ -1,47 +1,75 @@
 # 🧠 Neura — A Minimal Deep Learning Framework (WIP)
 
-**Neura** is a lightweight, from-scratch deep learning framework written in Python. Built to be simple, readable, and extensible, it's designed for educational clarity and hardcore research flexibility.
+**Neura** is a lightweight, from-scratch deep learning framework built with one thing in mind:
 
-Currently supports:
-- ✅ Forward & backward tensor ops
-- ✅ Autograd engine
-- ✅ Optimizers (SGD, Adam)
-- ✅ Basic layers (Linear, ReLU, etc.)
-- ✅ Full training loop for MNIST (CPU only)
+> 🧩 **Developer Experience First.**
 
-> ⚙️ **GPU backend coming soon — CUDA integration starts now.**
+Not just raw performance or completeness — but a code *interface* that feels like you're building a neural system, not wrestling with a jungle of wrappers.
 
 ---
 
-## 🚀 Why Neura?
+## ✨ What's Special About Neura?
 
-Most deep learning frameworks are bloated, abstracted, and optimized for scale — not understanding. Neura goes the other way:
+> Modern DL libraries are powerful, but cluttered. Neura flips the script.
 
-- **Zero dependencies** (no PyTorch, no TensorFlow)
-- **Every component hand-coded**, from autograd to model loop
-- Easy to hack, extend, or rewrite
-- Built for researchers, tinkerers, and learners who want control
+It introduces a **clean, expressive API** for defining models — chaining layers like functions, composing blocks with decorators, and keeping your code readable at scale.
+
+Instead of this:
+```python
+x = self.bn2(self.conv2(self.bn1(self.conv1(x))))
+```
+You write this:
+```python
+x = x >> self.conv1 >> self.bn1 >> self.conv2 >> self.bn2
+```
+
+Want to attach an activation? Just decorate the block:
+```python
+@F.relu
+def conv_block(self, x):
+    return x >> self.conv >> self.bn
+```
+
+✅ Composable
+✅ Reusable
+✅ Easy to reason about
+✅ Feels like you're defining a graph, not a script
+
+## ✅ Currently Supports
+
+- Forward & backward tensor ops  
+- Autograd engine  
+- Optimizers (SGD, Adam)  
+- Full training loop for MNIST (CPU only)  
+- Elegant model definition syntax  
+- Basic layers (Linear, Conv2D, ReLU, BatchNorm, etc.)
+
+> ⚙️ **GPU backend is under active development (CUDA support coming in hot)**
 
 ---
 
-## 🧪 Current Capabilities
+## 💡 Philosophy
 
-| Feature                  | Status            |
-|--------------------------|-------------------|
-| Tensor operations        | ✅ Implemented     |
-| Autograd engine          | ✅ Implemented     |
-| CPU backend              | ✅ Working         |
-| Basic layers (Linear, etc.) | ✅ Done         |
-| Optimizers (SGD, Adam)   | ✅ Working           |
-| Loss functions           | ✅ Working            |
-| MNIST training loop      | ✅ Working         |
-| GPU backend (CUDA)       | 🚧 In progress     |
-| Convolutional layers     | ✅ Done         |
-| Model saving/loading     | 🕒 Planned         |
+> Neura is built for *builders* — not abstract users.
+
+Most frameworks prioritize massive scale and generalization. Neura prioritizes **clarity, hackability, and control**.
+
+- You *see* the gradient flow  
+- You *define* the ops  
+- You can *compile Python code into CUDA kernels* (yes, that’s coming)  
+- You design models like building Lego, not nesting Russian dolls
+
+We care about:
+- Fast iteration  
+- Ergonomic design  
+- Bare-metal understanding  
+- Prototyping research ideas without friction
+
+This is a **developer-first**, not “enterprise-first” framework.
 
 ---
 
-## 📦 Example: Train a model on MNIST
+## 📦 Example: Training a Model (Minimal Style)
 
 ```python
 import neura.nn as nn
@@ -56,18 +84,9 @@ class MLP(nn.Module):
         self.fc2 = Linear(128, 10)
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        return x
+        return x >> self.fc1 >> self.relu >> self.fc2
 
-# Instantiate model
 model = MLP()
-
-# Load data
-train_loader, test_loader = DataLoader(dataset, batch_size=32, shuffle=True)
-
-# Define loss and optimizer
 loss_fn = BCEWithLogitLoss()
 optimizer = Adam(model.parameters(), lr=0.01)
 
@@ -75,71 +94,72 @@ for epoch in range(5):
     for x_batch, y_batch in train_loader:
         preds = model(x_batch)
         loss = loss_fn(preds, y_batch)
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-    print(f"Epoch {epoch+1} complete")
 ```
 
-## 🔮 Roadmap
+## 🛣️ Roadmap
 
-- [ ] **GPU backend** with CUDA / CuPy
-- [ ] **Convolutional layers** (Conv2D, MaxPool, etc.)
-- [ ] **Transformer components** (Multihead Attention, LayerNorm)
-- [ ] **Checkpointing and model loading**
-- [ ] **Training benchmark suite** (compare against PyTorch, NumPy baselines)
-- [ ] **Config system / CLI launcher**
-- [ ] **NeuraScript** — DSL for fast, modular model definition
+- [x] CPU training loop + layers  
+- [x] Expressive model API (`>>`, decorators)  
+- [x] Convolutional layers (Conv2D, BatchNorm2D)  
+- [ ] GPU backend (CUDA kernels)  
+- [ ] Model saving/loading  
+- [ ] Transformer blocks (Multihead Attention, LayerNorm)  
+- [ ] CLI launcher + config system  
+- [ ] `neurascript`: a DSL for defining models in 3 lines or less  
+- [ ] Training benchmark suite (compare against PyTorch, NumPy baselines)  
 
 ---
 
-
-## 👨‍💻 Author
+## 👤 Author
 
 **Yusuf Mohamed**  
-AI Researcher | ML Engineer | Open-source Contributor
+AI Researcher | ML Engineer | Open-source Builder  
 
-- Currently building **Neura**, a full deep learning stack from scratch  
-- Creator of **GRF**, a new multimodal fusion model  
+- Creator of **GRF** (Gated Recursive Fusion)  
+- Building **Neura** as a clean-slate deep learning framework  
 - Contributor at **Hugging Face**  
-- Passionate about building foundational tools for open, transparent AI
 
 📎 [GitHub – @yushi2006](https://github.com/yushi2006)  
 📎 [LinkedIn – Yusuf Mohamed](https://www.linkedin.com/in/yusufmohamed2006/)
 
 ---
 
-## 🧠 Vision
+## 🤝 Contributing
 
-Neura is more than a framework — it’s a tool for researchers who want to go *deeper*. It’s about:
+Neura is currently a one-man project, but it's open for contributions.
 
-- Understanding DL by building it
-- Controlling every layer of abstraction
-- Creating custom architectures without 20 wrappers and 500MB of dependencies
-- Creating Custom CUDA kernels with python
+You can help with:
+- Writing CUDA kernels  
+- Expanding layer coverage  
+- Improving training utilities  
+- Fixing bugs and improving developer experience  
 
-If PyTorch is a spaceship, Neura is the engine on the table — raw, flexible, and yours to optimize.
+If you're passionate about low-level DL tooling, compiler design, or building custom model infra — you're welcome here.
 
-> Clone. Hack. Break. Rebuild. That’s the point.
+**Fork the repo. Open an issue. Build the future.**
 
 ---
 
-## 🤝 Contributing
+## 🧠 Neura’s Vision
 
-Neura is a one-man project (for now), but it’s open to contributions. Whether you:
-- Want to build CUDA kernels
-- Improve layer coverage
-- Add test coverage or infra
-- Or just use it and report bugs
+Neura isn’t trying to be the next PyTorch — it’s a rethink of how we *build* and *interface with* neural networks.
 
-…you’re welcome here.
+### It’s built to:
+- Let you define models as **semantic, readable pipelines**  
+- Strip back unnecessary layers of abstraction  
+- Give you control from **Python to CUDA**  
+- Be a real tool for research and experimentation, not just deployment
 
-**Open an issue. Fork the repo. Let's build.**
+> If PyTorch is a spaceship, Neura is the blueprint, the engine, and the wrench.
+
+Use it to learn. Use it to build. Use it to push the limits.
 
 ---
 
 ## 📄 License
 
 **MIT License** — free to use, modify, and commercialize with attribution.
+

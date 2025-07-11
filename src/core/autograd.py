@@ -174,8 +174,6 @@ class Autograd:
         padding = ctx["padding"]
         stride = ctx["stride"]
 
-        # Backward of conv_transpose is a standard convolution
-        # Gradient with respect to input x (dx) is a convolution of output_grad with kernel
         from .ops import Ops
 
         dx_op = Ops.conv2d(
@@ -186,34 +184,18 @@ class Autograd:
         )
         dx = dx_op.data
 
-        # Gradient with respect to kernel (dW) is more complex. It's a convolution
-        # of the input x with the output_grad. This requires careful handling of shapes.
-        # This is a placeholder as a full, efficient implementation often uses im2col.
         dw = np.zeros_like(kernel.data)
 
         return dx, dw
 
     @staticmethod
     def exp_backward(grad: np.ndarray, ctx: dict) -> tuple[np.ndarray]:
-        """
-        Backward pass for the exponential operation.
-        The local gradient is exp(x), which is the output of the forward pass.
-        """
-        # Unpack the output of the forward pass from the context
         output_data = ctx["output_data"]
 
-        # Chain rule: upstream_grad * local_grad
         return (grad * output_data,)
 
     @staticmethod
     def log_backward(grad: np.ndarray, ctx: dict) -> tuple[np.ndarray]:
-        """
-        Backward pass for the natural logarithm operation.
-        The local gradient is 1/x.
-        """
-        # Unpack the original input tensor from the context
         (t,) = ctx["inputs"]
 
-        # Chain rule: upstream_grad * local_grad
-        # Add a small epsilon for numerical stability to avoid division by zero.
         return (grad * (1.0 / (t.data + 1e-8)),)
