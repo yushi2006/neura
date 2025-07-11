@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+from typing import List, Optional, Union
+
 import numpy as np
-from typing import Optional, Union, List
-from .init_strategies import InitStrategy, OneInit, ZeroInit, RandnInit
+
+from .init_strategies import InitStrategy, OneInit, RandnInit, ZeroInit
 
 
 class Tensor:
@@ -12,25 +15,33 @@ class Tensor:
         dtype: type = np.float32,
         _ctx: Optional[tuple] = None,
     ):
-        if isinstance(data, list):
-            self.data = np.array(data, dtype=dtype)
-        else:
-            self.data = data.astype(dtype)
+        self.data = (
+            np.array(data, dtype=dtype)
+            if not isinstance(data, np.ndarray)
+            else data.astype(dtype)
+        )
         self.requires_grad = requires_grad
         self.dtype = dtype
         self.ndim = self.data.ndim
         self.shape = self.data.shape
         self.grad = np.zeros_like(self.data) if requires_grad else None
-        self._ctx = _ctx
-        self.T = self.data.T
+        self._ctx = _ctx  # Stores (backward_fn, context_dict)
 
+    # --- Properties ---
+    @property
+    def T(self) -> Tensor:
+        from .ops import Ops
+
+        return Ops.transpose(self)
+
+    # --- Factory Methods ---
     @classmethod
     def from_strategy(
         cls,
         shape: tuple,
         strategy: InitStrategy,
-        requires_grad: Optional[bool] = True,
-        dtype: Optional[type] = np.float32,
+        requires_grad: bool = True,
+        dtype: type = np.float32,
     ) -> Tensor:
         data = strategy.init(shape, dtype)
         return cls(data, requires_grad, dtype=dtype)
@@ -44,101 +55,183 @@ class Tensor:
         return cls.from_strategy(shape, ZeroInit(), **kwargs)
 
     @classmethod
-    def randn(cls, shape: tuple, **kwargs) -> Tensor:
+    def randn(cls, *shape: int, **kwargs) -> Tensor:
         return cls.from_strategy(shape, RandnInit(), **kwargs)
 
-    def __add__(self, other: Tensor) -> Tensor:
-        from . import ops
+    # --- Dunder Methods for Ops (delegating to ops.py) ---
+    def __add__(self, other: Union[float, int, Tensor]) -> Tensor:
+        from .ops import Ops
 
-        return ops.add(self, other)
+        return Ops.add(self, other if isinstance(other, Tensor) else Tensor(other))
 
-    def __sub__(self, other: Tensor) -> Tensor:
-        from . import ops
+    def __radd__(self, other):
+        return self.__add__(other)
 
-        return ops.sub(self, other)
+    def __sub__(self, other: Union[float, int, Tensor]) -> Tensor:
+        from .ops import Ops
 
-    def __mul__(self, scalar: float) -> Tensor:
-        from . import ops
+        return Ops.sub(self, other if isinstance(other, Tensor) else Tensor(other))
 
-        return ops.mul(self, scalar=scalar)
+    def __rsub__(self, other):
+        return Ops.neg(self.__sub__(other))
+
+    def __mul__(self, other: Union[float, int, Tensor]) -> Tensor:
+        from .ops import Ops
+
+        if isinstance(other, Tensor):
+            return Ops.elementwisemul(self, other)
+        else:
+            return Ops.mul(self, float(other))
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __truediv__(self, other: Union[float, int, Tensor]) -> Tensor:
+        return self * (other**-1.0)
+
+    def __rtruediv__(self, other):
+        return (self**-1.0) * other
 
     def __matmul__(self, other: Tensor) -> Tensor:
-        from . import ops
+        from .ops import Ops
 
-        return ops.matmul(self, other)
+        return Ops.matmul(self, other)
 
-    def __iadd__(self, other: Tensor) -> Tensor:
-        from . import ops
+    def __neg__(self) -> Tensor:
+        from .ops import Ops
 
-        self = ops.add(self, other)
+        return Ops.neg(self)
 
-        return self
+    def __pow__(self, power: float) -> Tensor:
+        from .ops import Ops
 
-    def __isub__(self, other: Tensor) -> Tensor:
-        from . import ops
+        return Ops.pow(self, power)
 
-        self = ops.sub(self, other)
+    # --- Core Operations (now correctly create new Tensors) ---
+    def view(self, *shape: int) -> Tensor:
+        from .ops import Ops
 
-        return self
+        return Ops.view(self, shape)
 
-    def __imul__(self, scalar: np.float32) -> Tensor:
-        from . import ops
+    def squeeze(self, dim: Optional[int] = None) -> Tensor:
+        from .ops import Ops
 
-        self = ops.mul(self, scalar=scalar)
-
-        return self
-
-    def __imatmul__(self, other: Tensor) -> Tensor:
-        from . import ops
-
-        self = ops.matmul(self, other)
-
-        return self
-
-    def __getitem__(self, idx: Union[int, slice]) -> Tensor.dtype:
-        return self.data[idx]
-
-    def __len__(self) -> int:
-        return self.data.size
-
-    def view(self, *args: int) -> Tensor:
-        self.data = self.data.reshape(*args)
-
-        return self
-
-    def squeeze(self, dim: int) -> Tensor:
-        self.data = self.data.squeeze(axis=dim)
-
-        return self
+        return Ops.squeeze(self, dim)
 
     def unsqueeze(self, dim: int) -> Tensor:
-        self.data = np.expand_dims(self.data, axis=dim)
+        from .ops import Ops
 
-        return self
+        return Ops.unsqueeze(self, dim)
 
-    def backward(self, grad=None):
+    def __getitem__(self, idx) -> Tensor:
+        from .ops import Ops
+
+        return Ops.getitem(self, idx)
+
+    def conv2d(self, kernel: Tensor, **kwargs) -> Tensor:
+        from .ops import Ops
+
+        return Ops.conv2d(self, kernel, **kwargs)
+
+    def conv2dTranspose(self, kernel: Tensor, **kwargs) -> Tensor:
+        from .ops import Ops
+
+        return Ops.conv2dTranspose(self, kernel, **kwargs)
+
+    # --- RESTORED: broadcast_to method ---
+    def broadcast_to(self, shape: tuple) -> "Tensor":
+        from .ops import Ops
+
+        return Ops.broadcast_to(self, shape)
+
+    # --- Other Operations ---
+    def sum(self, axis=None, keepdims=False) -> Tensor:
+        from .ops import Ops
+
+        return Ops.sum(self, axis, keepdims)
+
+    def relu(self) -> Tensor:
+        from .ops import Ops
+
+        return Ops.relu(self)
+
+    def abs(self) -> Tensor:
+        from .ops import Ops
+
+        return Ops.abs(self)
+
+    def exp(self) -> Tensor:
+        from .ops import Ops
+
+        return Ops.exp(self)
+
+    def log(self) -> Tensor:
+        from .ops import Ops
+
+        return Ops.exp(self)
+
+    # --- Autograd Engine ---
+    @staticmethod
+    def build_topo(tensor: "Tensor") -> list["Tensor"]:
+        topo, visited = [], set()
+
+        def _visit(t):
+            if t not in visited:
+                visited.add(t)
+                if t._ctx:
+                    for parent in t._ctx[1].get("inputs", []):
+                        if isinstance(parent, Tensor):
+                            _visit(parent)
+                topo.append(t)
+
+        _visit(tensor)
+        return topo
+
+    def backward(self, grad: Optional[np.ndarray] = None):
         if not self.requires_grad:
-            raise RuntimeError("Called backward on non-require-grad tensor.")
+            raise RuntimeError(
+                "Called backward on a tensor that does not require gradients."
+            )
 
         if grad is None:
-            if self.data.size == 1:
-                raise RuntimeError(
-                    "grad can be implicity created only for non-scalar outputs."
+            if self.data.size != 1:
+                grad = np.ones_like(self.data, dtype=self.dtype)
+            else:
+                grad = np.array([1.0], dtype=self.dtype)
+
+        self.grad = grad
+
+        topo_sorted_graph = self.build_topo(self)
+
+        for t in reversed(topo_sorted_graph):
+            if t._ctx is None or t.grad is None:
+                continue
+
+            backward_fn, arg_ctx = t._ctx
+            inputs = arg_ctx.get("inputs", [])
+
+            input_grads = backward_fn(t.grad, arg_ctx)
+
+            if not isinstance(input_grads, tuple):
+                input_grads = (input_grads,)
+
+            if len(inputs) != len(input_grads):
+                raise ValueError(
+                    f"Mismatch between number of inputs ({len(inputs)}) and gradients ({len(input_grads)}) for op."
                 )
-            grad = np.ones_like(self.data)
-        self.grad = grad if self.grad is None else self.grad + grad
 
-        if self._ctx is None:
-            return
+            for parent_tensor, grad_for_parent in zip(inputs, input_grads):
+                if isinstance(parent_tensor, Tensor) and parent_tensor.requires_grad:
+                    if grad_for_parent is None:
+                        continue
+                    if parent_tensor.grad is None:
+                        parent_tensor.grad = np.zeros_like(
+                            parent_tensor.data, dtype=self.dtype
+                        )
+                    parent_tensor.grad += grad_for_parent
 
-        backward_fn, arg_ctx = self._ctx
-        inputs = arg_ctx["inputs"]
-
-        input_grads = backward_fn(grad, arg_ctx)
-
-        for t, g in zip(inputs, input_grads):
-            if t.requires_grad:
-                t.backward(g)
+    def zero_grad(self):
+        self.grad = np.zeros_like(self.data, dtype=self.dtype)
 
     def __repr__(self) -> str:
-        return f"{self.data}, dtype={self.dtype}"
+        return f"Tensor({self.data}, requires_grad={self.requires_grad})"
